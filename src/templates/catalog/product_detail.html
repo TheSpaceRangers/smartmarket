@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ object.name }} — SmartMarket
+{% endblock %}
+
+{% block content %}
+  <h2>{{ object.name }}</h2>
+  <p>Catégorie : {{ object.category.name }}</p>
+  <p>Prix : {{ object.price }} €</p>
+  <p>{{ object.description|default:"(pas de description)" }}</p>
+{% endblock %}
