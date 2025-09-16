@@ -18,15 +18,15 @@ Including another URLconf
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
-
-from rest_framework.routers import DefaultRouter
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.routers import DefaultRouter
 
-from catalog.api import CategoryViewSet, ProductViewSet
+from catalog.api import CategoryViewSet, OrderViewSet, ProductViewSet
 
 router = DefaultRouter()
 router.register(r"categories", CategoryViewSet, basename="api-category")
 router.register(r"products", ProductViewSet, basename="api-product")
+router.register(r"orders", OrderViewSet, basename="api-order")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -38,6 +38,7 @@ urlpatterns = [
 
 if settings.DEBUG:
     import debug_toolbar
+
     urlpatterns += [
         path("__debug__/", include(debug_toolbar.urls)),
     ]

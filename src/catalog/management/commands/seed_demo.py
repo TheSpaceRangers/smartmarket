@@ -10,9 +10,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         cat_livres, _ = Category.objects.get_or_create(name="Livres", defaults={"slug": "livres"})
-        cat_elec, _ = Category.objects.get_or_create(
-            name="Électronique", defaults={"slug": "electronique"}
-        )
+        cat_elec, _ = Category.objects.get_or_create(name="Électronique", defaults={"slug": "electronique"})
         items = [
             ("Django 5 en pratique", cat_livres, "Un guide concis.", Decimal("39.90")),
             ("Casque Bluetooth X200", cat_elec, "Son clair.", Decimal("79.00")),

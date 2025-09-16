@@ -9,12 +9,7 @@ class ProductListView(ListView):
     paginate_by = 12
 
     def get_queryset(self):
-        return (
-            Product.objects.filter(is_active=True)
-            .select_related("category")
-            .only("id", "name", "slug", "price", "category__name")
-            .order_by("name")
-        )
+        return Product.objects.filter(is_active=True).select_related("category").only("id", "name", "slug", "price", "category__name").order_by("name")
 
 
 class ProductDetailView(DetailView):

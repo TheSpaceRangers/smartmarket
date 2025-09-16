@@ -10,6 +10,7 @@ from catalog.models import Category, Product
 def test_product_list_view(client):
     assert client.get(reverse("catalog:product_list")).status_code == 200
 
+
 @pytest.mark.django_db
 def test_product_detail_view(client):
     c = Category.objects.create(name="Livres", slug="livres")

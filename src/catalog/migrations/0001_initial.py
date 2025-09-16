@@ -17,9 +17,7 @@ class Migration(migrations.Migration):
             fields=[
                 (
                     "id",
-                    models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-                    ),
+                    models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID"),
                 ),
                 ("name", models.CharField(max_length=255)),
                 ("slug", models.SlugField(max_length=255, unique=True)),
@@ -33,9 +31,7 @@ class Migration(migrations.Migration):
             fields=[
                 (
                     "id",
-                    models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-                    ),
+                    models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID"),
                 ),
                 ("name", models.CharField(max_length=255)),
                 ("slug", models.SlugField(max_length=255)),
@@ -65,15 +61,11 @@ class Migration(migrations.Migration):
                 "ordering": ["name"],
                 "indexes": [
                     models.Index(fields=["slug"], name="catalog_pro_slug_2b1eb6_idx"),
-                    models.Index(
-                        fields=["category", "is_active"], name="catalog_pro_categor_891fe8_idx"
-                    ),
+                    models.Index(fields=["category", "is_active"], name="catalog_pro_categor_891fe8_idx"),
                 ],
                 "constraints": [
                     models.UniqueConstraint(fields=("category", "slug"), name="uniq_category_slug"),
-                    models.CheckConstraint(
-                        condition=models.Q(("price__gte", 0)), name="price_gte_0"
-                    ),
+                    models.CheckConstraint(condition=models.Q(("price__gte", 0)), name="price_gte_0"),
                 ],
             },
         ),
