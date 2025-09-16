@@ -4,7 +4,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 
 from .models import Category, Product
-from .serializers import CategorySerializer, ProductDetailSerializer, ProductListSerializer
+from .serializers import CategorySerializer, ProductDetailSerializer, ProductListSerializer, ProductWriteSerializer
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -30,6 +30,8 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ["name", "price", "updated_at"]
 
     def get_serializer_class(self):
-        if self.action in ["list"]:
+        if self.action == "list":
             return ProductListSerializer
+        if self.action in ["create","update","partial_update"]:
+            return ProductWriteSerializer
         return ProductDetailSerializer

@@ -25,3 +25,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "is_active", "created_at", "updated_at", "category"
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+class ProductWriteSerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    class Meta:
+        model = Product
+        fields = ["name","slug","description","price","stock","is_active","category"]
