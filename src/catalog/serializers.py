@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from .models import Category, Order, Product
@@ -59,3 +60,18 @@ class OrderWriteSerializer(serializers.ModelSerializer):
         model = Order
         fields = ["id", "status"]
         read_only_fields = ["id"]
+
+
+class OrderExportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["id", "status", "created_at", "updated_at"]
+
+
+class UserExportSerializer(serializers.ModelSerializer):
+    orders = OrderExportSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = get_user_model()
+        fields = ["id", "username", "email", "date_joined", "last_login", "orders"]
+        read_only_fields = fields

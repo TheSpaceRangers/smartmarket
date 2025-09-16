@@ -49,10 +49,11 @@ class Command(BaseCommand):
         ]
 
         for username, password, is_superuser, groups in users:
+            is_staff_value = bool(is_superuser or ("manager" in groups))
             u, created = User.objects.get_or_create(username=username, defaults={"is_staff": True})
             u.set_password(password)
             u.is_superuser = is_superuser
-            u.is_staff = True
+            u.is_staff = is_staff_value
             u.save()
             u.groups.clear()
             for g in groups:

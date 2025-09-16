@@ -21,7 +21,13 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
-from catalog.api import CategoryViewSet, OrderViewSet, ProductViewSet
+from catalog.api import (
+    CategoryViewSet,
+    MeEraseView,
+    MeExportView,
+    OrderViewSet,
+    ProductViewSet,
+)
 
 router = DefaultRouter()
 router.register(r"categories", CategoryViewSet, basename="api-category")
@@ -32,6 +38,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("catalog.urls")),
     path("api/v1/", include(router.urls)),
+    path("api/v1/me/export/", MeExportView.as_view(), name="api-me-export"),
+    path("api/v1/me/erase/", MeEraseView.as_view(), name="api-me-erase"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 ]

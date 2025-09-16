@@ -1,7 +1,12 @@
+import logging
+
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets
+from drf_spectacular.utils import OpenApiExample, extend_schema
+from rest_framework import status, viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Category, Order, Product
 from .permissions import IsOwnerOrAdmin, IsStaffOrDjangoModelPermissionsOrAnonReadOnly
@@ -12,7 +17,10 @@ from .serializers import (
     ProductDetailSerializer,
     ProductListSerializer,
     ProductWriteSerializer,
+    UserExportSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -76,3 +84,30 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class MeExportView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "rgpd"
+
+    def get(self, request):
+        data = UserExportSerializer(request.user).data
+        return Response(data, status=status.HTTP_200_OK)
+
+
+@extend_schema(tags=["me"], responses=UserExportSerializer, examples=[OpenApiExample("Export sample", value={"id": 1, "username": "alice", "email": "a@x.tld", "orders": []})])
+class MeEraseView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "rgpd"
+
+    def post(self, request):
+        u = request.user
+        # suppression des données personnelles contrôlées
+        Order.objects.filter(user=u).delete()
+        u.is_active = False
+        u.email = f"deleted+{u.id}@example.invalid"
+        u.first_name = ""
+        u.last_name = ""
+        u.save(update_fields=["is_active", "email", "first_name", "last_name"])
+        logger.info("RGPD_ERASE user_id=%s", u.id)
+        return Response({"status": "scheduled", "detail": "Account disabled and data removed"}, status=status.HTTP_202_ACCEPTED)
