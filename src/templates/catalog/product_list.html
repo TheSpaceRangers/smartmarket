@@ -1,25 +1,68 @@
-{% extends "base.html" %}{% block title %}Produits — SmartMarket{% endblock %}
+{% extends "base.html" %}
+{% block title %}Catalogue des produits - SmartMarket{% endblock %}
+
 {% block content %}
-<h2>Produits</h2>
-{% if object_list %}
-<ul>
-  {% for p in object_list %}
-  <li>
-    <a href="{% url 'catalog:product_detail' slug=p.slug %}">{{ p.name }}</a> —
-    {{ p.category.name }} — {{ p.price }} €
-  </li>
-  {% endfor %}
-</ul>
-<div class="pagination">
-  {% if is_paginated %} {% if page_obj.has_previous %}<a
-    href="?page={{ page_obj.previous_page_number }}"
-    >Précédent</a
-  >{% endif %}
-  <span>Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-  {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}"
-    >Suivant</a
-  >{% endif %} {% endif %}
-</div>
-{% else %}
-<p>Aucun produit actif.</p>
-{% endif %} {% endblock %}
+<section class="products-section">
+  <header class="section-header">
+    <h2>Nos produits</h2>
+    <p class="product-count">{{ page_obj.paginator.count }} produit{{ page_obj.paginator.count|pluralize }} disponible{{ page_obj.paginator.count|pluralize }}</p>
+  </header>
+
+  {% if object_list %}
+  <div class="products-grid">
+    {% for product in object_list %}
+    <article class="product-card">
+      <header>
+        <h3 class="product-title">
+          <a href="{% url 'catalog:product_detail' slug=product.slug %}">{{ product.name }}</a>
+        </h3>
+      </header>
+      
+      <div class="product-info">
+        <span class="product-category">{{ product.category.name }}</span>
+        <span class="product-price">{{ product.price }} €</span>
+      </div>
+      
+      {% if product.stock > 0 %}
+      <span class="stock-status in-stock">En stock ({{ product.stock }})</span>
+      {% else %}
+      <span class="stock-status out-of-stock">Rupture de stock</span>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if is_paginated %}
+  <nav class="pagination" aria-label="Navigation entre les pages">
+    <ul class="pagination-list">
+      {% if page_obj.has_previous %}
+      <li>
+        <a href="?page={{ page_obj.previous_page_number }}" class="pagination-link" aria-label="Page précédente">
+          ← Précédent
+        </a>
+      </li>
+      {% endif %}
+      
+      <li class="pagination-info">
+        <span>Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+      </li>
+      
+      {% if page_obj.has_next %}
+      <li>
+        <a href="?page={{ page_obj.next_page_number }}" class="pagination-link" aria-label="Page suivante">
+          Suivant →
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <p>Aucun produit n'est disponible pour le moment.</p>
+    <p>Revenez bientôt pour découvrir nos nouveautés !</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

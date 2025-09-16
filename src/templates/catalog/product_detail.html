@@ -1,12 +1,78 @@
 {% extends "base.html" %}
 
-{% block title %}
-  {{ object.name }} — SmartMarket
-{% endblock %}
+{% block title %}{{ object.name }} - SmartMarket{% endblock %}
 
 {% block content %}
-  <h2>{{ object.name }}</h2>
-  <p>Catégorie : {{ object.category.name }}</p>
-  <p>Prix : {{ object.price }} €</p>
-  <p>{{ object.description|default:"(pas de description)" }}</p>
+<article class="product-detail">
+  <nav class="breadcrumb" aria-label="Fil d'Ariane">
+    <ol>
+      <li><a href="{% url 'catalog:product_list' %}">Catalogue</a></li>
+      <li><a href="{% url 'catalog:product_list' %}">{{ object.category.name }}</a></li>
+      <li aria-current="page">{{ object.name }}</li>
+    </ol>
+  </nav>
+
+  <header class="product-header">
+    <h1>{{ object.name }}</h1>
+    <div class="product-meta">
+      <span class="category-badge">{{ object.category.name }}</span>
+      <time datetime="{{ object.updated_at|date:'c' }}" class="last-update">
+        Mis à jour le {{ object.updated_at|date:"d/m/Y" }}
+      </time>
+    </div>
+  </header>
+
+  <section class="product-main">
+    <div class="product-price-box">
+      <span class="price-label">Prix</span>
+      <span class="price-value">{{ object.price }} €</span>
+      
+      <div class="stock-info">
+        {% if object.stock > 0 %}
+          <span class="stock-status in-stock">
+            ✓ En stock ({{ object.stock }} disponible{{ object.stock|pluralize }})
+          </span>
+        {% else %}
+          <span class="stock-status out-of-stock">
+            ✗ Rupture de stock
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <section class="product-description">
+      <h2>Description</h2>
+      {% if object.description %}
+        <p>{{ object.description|linebreaks }}</p>
+      {% else %}
+        <p class="no-description">Aucune description disponible pour ce produit.</p>
+      {% endif %}
+    </section>
+
+    <section class="product-details">
+      <h2>Détails</h2>
+      <dl>
+        <dt>Référence</dt>
+        <dd>{{ object.slug|upper }}</dd>
+        
+        <dt>Catégorie</dt>
+        <dd>{{ object.category.name }}</dd>
+        
+        <dt>Ajouté le</dt>
+        <dd>{{ object.created_at|date:"d/m/Y à H:i" }}</dd>
+      </dl>
+    </section>
+  </section>
+
+  <footer class="product-actions">
+    <a href="{% url 'catalog:product_list' %}" class="btn btn-secondary">
+      ← Retour au catalogue
+    </a>
+    {% if object.is_active and object.stock > 0 %}
+    <button class="btn btn-primary" disabled>
+      Ajouter au panier (bientôt disponible)
+    </button>
+    {% endif %}
+  </footer>
+</article>
 {% endblock %}
