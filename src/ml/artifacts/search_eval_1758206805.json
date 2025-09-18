@@ -1,0 +1,35 @@
+{
+  "index_version": "test-v",
+  "k": 10,
+  "count": 3,
+  "macro_P@K": 0.0,
+  "results": [
+    {
+      "q": "clavier",
+      "expected_slugs": [
+        "kb"
+      ],
+      "found_ids": [],
+      "p_at_k": 0.0
+    },
+    {
+      "q": "casque",
+      "expected_slugs": [
+        "hifi",
+        "casque-bluetooth-x200",
+        "sport"
+      ],
+      "found_ids": [],
+      "p_at_k": 0.0
+    },
+    {
+      "q": "django",
+      "expected_slugs": [
+        "django-5-en-pratique"
+      ],
+      "found_ids": [],
+      "p_at_k": 0.0
+    }
+  ],
+  "timestamp": 1758206805
+}

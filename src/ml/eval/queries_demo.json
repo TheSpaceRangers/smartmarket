@@ -1,0 +1,8 @@
+[
+  { "q": "clavier", "expected_slugs": ["kb"] },
+  {
+    "q": "casque",
+    "expected_slugs": ["hifi", "casque-bluetooth-x200", "sport"]
+  },
+  { "q": "django", "expected_slugs": ["django-5-en-pratique"] }
+]

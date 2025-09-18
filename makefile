@@ -52,3 +52,7 @@ reindex-products:
 .PHONY: reindex-assistant
 reindex-assistant:
 	$(MANAGE) build_assistant_index --idx-version $${VERSION:-v1}
+
+.PHONY: eval-search
+eval-search:
+	$(MANAGE) eval_search --file $${FILE:-src/ml/eval/queries_demo.json} --k $${K:-10}
