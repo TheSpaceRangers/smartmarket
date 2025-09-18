@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import OpenApiExample, extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema, OpenApiParameter
 from rest_framework import status, viewsets
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.exceptions import ValidationError
@@ -13,6 +13,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from rest_framework.throttling import ScopedRateThrottle
+
+from ml import products_index
+from ml import assistant as ml_assistant
+from ml.cache import buster_key
 
 from .models import Category, Order, Product
 from .permissions import IsOwnerOrAdmin, IsStaffOrDjangoModelPermissionsOrAnonReadOnly
@@ -280,3 +285,96 @@ class JWTLogoutView(APIView):
         _clear_cookie(resp, ACCESS_COOKIE)
         _clear_cookie(resp, REFRESH_COOKIE)
         return resp
+
+@extend_schema(
+    tags=["products"],
+    summary="Recommandations basées contenu",
+    parameters=[OpenApiParameter(name="k", description="Top-K recommandations", required=False, type=int)],
+)
+class ProductRecommendationsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk: int):
+        k = int(request.query_params.get("k", 10))
+        idx_manifest = products_index.read_manifest("product_index") if hasattr(products_index, "read_manifest") else {"version": "0"}
+        version = (idx_manifest or {}).get("version", "0")
+        key = f"reco:{version}:{buster_key()}:{pk}:{k}"
+        cached = cache.get(key)
+        if cached:
+            return Response(cached, status=200)
+        recs = products_index.recommend(product_id=pk, k=k, exclude_self=True, ensure_diversity=True)
+        ids = [r["product_id"] for r in recs]
+        qs = Product.objects.filter(id__in=ids).select_related("category")
+        # Conserver l'ordre
+        prod_by_id = {p.id: p for p in qs}
+        ordered = [prod_by_id[i] for i in ids if i in prod_by_id]
+        data = ProductListSerializer(ordered, many=True).data
+        # attacher raisons + score
+        decorated = []
+        for item, r in zip(data, recs):
+            item["reason"] = r["reason"]
+            item["score"] = round(r["score"], 6)
+            decorated.append(item)
+        resp = {"results": decorated, "version": version}
+        cache.set(key, resp, timeout=300)
+        return Response(resp, status=200)
+
+@extend_schema(
+    tags=["search"],
+    summary="Recherche sémantique produits (TF-IDF local)",
+    parameters=[
+        OpenApiParameter(name="q", description="Requête", required=True, type=str),
+        OpenApiParameter(name="k", description="Top-K", required=False, type=int),
+    ],
+)
+class SearchView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        q = request.query_params.get("q", "").strip()
+        if not q:
+            return Response({"detail": "missing q"}, status=400)
+        k = int(request.query_params.get("k", 10))
+        idx_manifest = products_index.read_manifest("product_index") if hasattr(products_index, "read_manifest") else {"version": "0"}
+        version = (idx_manifest or {}).get("version", "0")
+        key = f"search:{version}:{buster_key()}:{q}:{k}"
+        cached = cache.get(key)
+        if cached:
+            return Response(cached, status=200)
+        hits = products_index.search(q=q, k=k)
+        ids = [h["product_id"] for h in hits]
+        qs = Product.objects.filter(id__in=ids, is_active=True).select_related("category")
+        prod_by_id = {p.id: p for p in qs}
+        ordered = [prod_by_id[i] for i in ids if i in prod_by_id]
+        data = ProductListSerializer(ordered, many=True).data
+        out = []
+        for item, h in zip(data, hits):
+            item["score"] = round(h["score"], 6)
+            item["reason"] = h["reason"]
+            out.append(item)
+        resp = {"results": out, "version": version}
+        cache.set(key, resp, timeout=300)
+        return Response(resp, status=200)
+
+@extend_schema(
+    tags=["assistant"],
+    summary="Assistant d’aide à l’achat (RAG local extractif)",
+    request=None,
+    responses={200: None},
+)
+class AssistantAskView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "assistant"
+
+    def post(self, request):
+        q = (request.data or {}).get("q", "").strip()
+        if not q:
+            return Response({"detail": "missing q"}, status=400)
+        k = int((request.data or {}).get("k", 5))
+        key = f"assistant:{buster_key()}:{q}:{k}"
+        cached = cache.get(key)
+        if cached:
+            return Response(cached, status=200)
+        result = ml_assistant.answer(q=q, k=k)
+        cache.set(key, result, timeout=120)
+        return Response(result, status=200)

@@ -20,7 +20,7 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     "corsheaders",
-    "catalog",
+    "catalog.apps.CatalogConfig",
 ]
 
 MIDDLEWARE = [
@@ -77,6 +77,26 @@ DATABASES = {
     }
 }
 
+REDIS_URL = environ.get("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+            "KEY_PREFIX": "sm",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "smartmarket-default",
+        }
+    }
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -101,6 +121,7 @@ REST_FRAMEWORK = {
         "user": "120/min",
         "login": "10/min",
         "rgpd": "10/min",
+        "assistant": "10/min",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -129,3 +150,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "catalog.validators.ComplexityValidator"},
     {"NAME": "catalog.validators.HIBPPasswordValidator"},
 ]
+
+ML_ARTIFACTS_DIR = Path(environ.get("ML_ARTIFACTS_DIR", BASE_DIR / "src" / "ml" / "artifacts"))
+ML_ASSISTANT_CORPUS_DIR = Path(environ.get("ML_ASSISTANT_CORPUS_DIR", BASE_DIR / "src" / "ml" / "corpus"))

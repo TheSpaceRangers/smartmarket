@@ -22,6 +22,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework.routers import DefaultRouter
 
 from catalog.api import (
+    AssistantAskView,
     CategoryViewSet,
     JWTLoginView,
     JWTLogoutView,
@@ -31,7 +32,9 @@ from catalog.api import (
     MeExportView,
     OrderViewSet,
     PasswordResetRequestView,
+    ProductRecommendationsView,
     ProductViewSet,
+    SearchView,
 )
 
 router = DefaultRouter()
@@ -44,6 +47,9 @@ urlpatterns = [
     path("", include("catalog.urls")),
     path("api-auth/", include("rest_framework.urls")),
     path("api/v1/", include(router.urls)),
+    path("api/v1/products/<int:pk>/recommendations/", ProductRecommendationsView.as_view(), name="api-product-recommendation"),
+    path("api/v1/search/", SearchView.as_view(), name="api-search"),
+    path("api/v1/assistant/ask/", AssistantAskView.as_view(), name="api-assistant-ask"),
     path("api/v1/me/export/", MeExportView.as_view(), name="api-me-export"),
     path("api/v1/me/erase/", MeEraseView.as_view(), name="api-me-erase"),
     path("api/v1/login/", LoginView.as_view(), name="api-login"),
