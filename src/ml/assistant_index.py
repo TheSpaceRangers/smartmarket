@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import logging
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import Any
 
 import numpy as np
 from django.conf import settings
@@ -11,23 +12,25 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from .text import normalize
-from .utils import artifacts_dir, write_manifest, read_manifest
+from .utils import artifacts_dir, read_manifest, write_manifest
 
 logger = logging.getLogger(__name__)
 
 INDEX_NAME = "assistant_index"
 PICKLE_FILE = "assistant_index.pkl"
 
+
 @dataclass
 class AssistantIndex:
     version: str
-    ids: List[str]
-    chunks: List[str]
+    ids: list[str]
+    chunks: list[str]
     X: Any
     vectorizer: TfidfVectorizer
-    meta: Dict[str, Dict[str, Any]]
+    meta: dict[str, dict[str, Any]]
 
-def _load_corpus() -> Tuple[List[str], List[str], Dict[str, Dict[str, Any]]]:
+
+def _load_corpus() -> tuple[list[str], list[str], dict[str, dict[str, Any]]]:
     src_dir = Path(settings.ML_ASSISTANT_CORPUS_DIR)
     ids, chunks, meta = [], [], {}
     if not src_dir.exists():
@@ -46,6 +49,7 @@ def _load_corpus() -> Tuple[List[str], List[str], Dict[str, Dict[str, Any]]]:
             meta[cid] = {"path": str(p), "doc": p.name, "chunk": i}
     return ids, chunks, meta
 
+
 def build_index(version: str | None = None) -> AssistantIndex:
     ids, chunks, meta = _load_corpus()
     n_docs = max(len(chunks), 1)
@@ -55,12 +59,14 @@ def build_index(version: str | None = None) -> AssistantIndex:
     save_index(idx)
     return idx
 
+
 def save_index(idx: AssistantIndex) -> None:
     artifacts = artifacts_dir()
     blob = {"version": idx.version, "ids": idx.ids, "chunks": idx.chunks, "X": idx.X, "vectorizer": idx.vectorizer, "meta": idx.meta}
     with (artifacts / PICKLE_FILE).open("wb") as f:
         pickle.dump(blob, f)
     write_manifest(INDEX_NAME, {"version": idx.version, "count": len(idx.ids), "dim": int(idx.X.shape[1]), "file": PICKLE_FILE})
+
 
 def load_index() -> AssistantIndex | None:
     artifacts = artifacts_dir()
@@ -78,13 +84,15 @@ def load_index() -> AssistantIndex | None:
         meta=blob["meta"],
     )
 
+
 def load_or_build() -> AssistantIndex:
     idx = load_index()
     if idx is None:
         idx = build_index()
     return idx
 
-def retrieve(q: str, k: int = 5) -> List[Dict[str, Any]]:
+
+def retrieve(q: str, k: int = 5) -> list[dict[str, Any]]:
     idx = load_or_build()
     qv = idx.vectorizer.transform([normalize(q)])
     sims = cosine_similarity(qv, idx.X).ravel()

@@ -1,9 +1,9 @@
 {
-  "version": "v1",
-  "count": 19,
-  "dim": 309,
+  "version": "test-v",
+  "count": 0,
+  "dim": 1,
   "file": "product_index.pkl",
   "vectorizer": "tfidf(1,2)-fr",
   "name": "product_index",
-  "timestamp": "2025-09-18T11:43:33.280228Z"
+  "timestamp": "2025-09-18T14:30:26.707100Z"
 }

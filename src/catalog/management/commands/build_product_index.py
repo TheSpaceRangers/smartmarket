@@ -1,5 +1,7 @@
 from django.core.management.base import BaseCommand
+
 from ml.products_index import build_index
+
 
 class Command(BaseCommand):
     help = "Construit l'index vectoriel des produits (TF-IDF)."

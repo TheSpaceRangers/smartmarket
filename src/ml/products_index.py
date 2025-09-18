@@ -44,9 +44,18 @@ def _build_corpus() -> tuple[list[int], list[str]]:
 
 def build_index(version: str | None = None) -> ProductIndex:
     ids, docs = _build_corpus()
-    vec = TfidfVectorizer(ngram_range=(1, 2), max_df=0.9, min_df=1, stop_words=None)
-    X = vec.fit_transform(docs)
-    idx = ProductIndex(version=version or str(len(ids)), ids=np.array(ids), X=X, vectorizer=vec)
+    n_docs = len(docs)
+    vec = TfidfVectorizer(ngram_range=(1, 2), max_df=(1.0 if n_docs < 2 else 0.9), min_df=1, stop_words=None)
+    if n_docs == 0:
+        vec.fit(["vide"])
+        from scipy.sparse import csr_matrix
+
+        X = csr_matrix((0, len(vec.vocabulary_)))
+        ids_arr = np.array([], dtype=int)
+    else:
+        X = vec.fit_transform(docs)
+        ids_arr = np.array(ids)
+    idx = ProductIndex(version=version or str(len(ids)), ids=ids_arr, X=X, vectorizer=vec)
     save_index(idx)
     return idx
 
@@ -108,6 +117,8 @@ def _top_terms(vec, vocab, topk=5) -> list[str]:
 
 def search(q: str, k: int = 10) -> list[dict[str, Any]]:
     idx = load_or_build()
+    if idx.ids.size == 0:
+        return []
     qn = normalize(q)
     qv = idx.vectorizer.transform([qn])
     sims = cosine_similarity(qv, idx.X).ravel()
@@ -121,6 +132,8 @@ def search(q: str, k: int = 10) -> list[dict[str, Any]]:
 
 def recommend(product_id: int, k: int = 10, exclude_self: bool = True, ensure_diversity: bool = True) -> list[dict[str, Any]]:
     idx = load_or_build()
+    if idx.ids.size == 0:
+        return []
     try:
         pos = int(np.where(idx.ids == product_id)[0][0])
     except IndexError:

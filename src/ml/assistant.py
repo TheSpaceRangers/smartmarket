@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 import logging
-import uuid
 import time
-from typing import Dict, Any, List
+import uuid
+from typing import Any
 
 from .assistant_index import retrieve
 from .utils import read_manifest
 
 logger = logging.getLogger(__name__)
 
-def answer(q: str, k: int = 5, threshold: float = 0.1) -> Dict[str, Any]:
+
+def answer(q: str, k: int = 5, threshold: float = 0.1) -> dict[str, Any]:
     t0 = time.monotonic()
     trace_id = str(uuid.uuid4())
     version = (read_manifest("assistant_index") or {}).get("version", "0")
@@ -23,5 +25,5 @@ def answer(q: str, k: int = 5, threshold: float = 0.1) -> Dict[str, Any]:
     answer = " ".join(snippets)[:800]
     sources = [{"id": h["chunk_id"], "score": h["score"], "meta": h["meta"]} for h in hits]
     dt_ms = int((time.monotonic() - t0) * 1000)
-    logger.info("ASSISTANT_ASK time_ms=%s trace_id=%s q_len=%s k=%s version=%s top=%s", dt_ms, trace_id, len(q), k, version, [(s['id'], s['score']) for s in sources[:3]])
+    logger.info("ASSISTANT_ASK time_ms=%s trace_id=%s q_len=%s k=%s version=%s top=%s", dt_ms, trace_id, len(q), k, version, [(s["id"], s["score"]) for s in sources[:3]])
     return {"trace_id": trace_id, "version": version, "answer": answer, "sources": sources}

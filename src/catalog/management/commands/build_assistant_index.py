@@ -1,5 +1,7 @@
 from django.core.management.base import BaseCommand
+
 from ml.assistant_index import build_index
+
 
 class Command(BaseCommand):
     help = "Construit l'index RAG assistant (TF-IDF sur corpus local)."

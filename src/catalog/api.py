@@ -4,8 +4,9 @@ from time import monotonic
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import OpenApiExample, extend_schema, OpenApiParameter
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.exceptions import ValidationError
@@ -14,11 +15,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
-from rest_framework.throttling import ScopedRateThrottle
 
-from ml import products_index
 from ml import assistant as ml_assistant
-from ml.cache import buster_key
+from ml import products_index
+from ml.cache import buster_key, make_key
 
 from .models import Category, Order, Product
 from .permissions import IsOwnerOrAdmin, IsStaffOrDjangoModelPermissionsOrAnonReadOnly
@@ -287,6 +287,7 @@ class JWTLogoutView(APIView):
         _clear_cookie(resp, REFRESH_COOKIE)
         return resp
 
+
 @extend_schema(
     tags=["products"],
     summary="Recommandations basées contenu",
@@ -300,20 +301,18 @@ class ProductRecommendationsView(APIView):
         k = int(request.query_params.get("k", 10))
         idx_manifest = products_index.read_manifest("product_index") if hasattr(products_index, "read_manifest") else {"version": "0"}
         version = (idx_manifest or {}).get("version", "0")
-        key = f"reco:{version}:{buster_key()}:{pk}:{k}"
+        key = make_key("reco", version, buster_key(), pk, k)
         cached = cache.get(key)
         if cached:
             return Response(cached, status=200)
         recs = products_index.recommend(product_id=pk, k=k, exclude_self=True, ensure_diversity=True)
         ids = [r["product_id"] for r in recs]
         qs = Product.objects.filter(id__in=ids).select_related("category")
-        # Conserver l'ordre
         prod_by_id = {p.id: p for p in qs}
         ordered = [prod_by_id[i] for i in ids if i in prod_by_id]
         data = ProductListSerializer(ordered, many=True).data
-        # attacher raisons + score
         decorated = []
-        for item, r in zip(data, recs):
+        for item, r in zip(data, recs, strict=False):
             item["reason"] = r["reason"]
             item["score"] = round(r["score"], 6)
             decorated.append(item)
@@ -322,6 +321,7 @@ class ProductRecommendationsView(APIView):
         dt_ms = int((monotonic() - t0) * 1000)
         logger.info("RECO time_ms=%s pk=%s k=%s version=%s top=%s", dt_ms, pk, k, version, [(r.get("product_id"), round(r.get("score", 0), 6)) for r in recs[:3]])
         return Response(resp, status=200)
+
 
 @extend_schema(
     tags=["search"],
@@ -342,18 +342,33 @@ class SearchView(APIView):
         k = int(request.query_params.get("k", 10))
         idx_manifest = products_index.read_manifest("product_index") if hasattr(products_index, "read_manifest") else {"version": "0"}
         version = (idx_manifest or {}).get("version", "0")
-        key = f"search:{version}:{buster_key()}:{q}:{k}"
+        key = make_key("search", version, buster_key(), q, k)
         cached = cache.get(key)
         if cached:
             return Response(cached, status=200)
         hits = products_index.search(q=q, k=k)
+        if not hits:
+            qs = (
+                Product.objects.filter(is_active=True)
+                .filter(Q(name__icontains=q) | Q(description__icontains=q) | Q(slug__icontains=q) | Q(category__name__icontains=q))
+                .select_related("category")
+                .order_by("name")[:k]
+            )
+            data = ProductListSerializer(qs, many=True).data
+            for item in data:
+                item["score"] = 0.0
+                item["reason"] = "Correspondance texte (fallback)"
+            resp = {"results": data, "version": version}
+            if data:
+                cache.set(key, resp, timeout=300)  # ne pas cacher si vide
+            return Response(resp, status=200)
         ids = [h["product_id"] for h in hits]
         qs = Product.objects.filter(id__in=ids, is_active=True).select_related("category")
         prod_by_id = {p.id: p for p in qs}
         ordered = [prod_by_id[i] for i in ids if i in prod_by_id]
         data = ProductListSerializer(ordered, many=True).data
         out = []
-        for item, h in zip(data, hits):
+        for item, h in zip(data, hits, strict=False):
             item["score"] = round(h["score"], 6)
             item["reason"] = h["reason"]
             out.append(item)
@@ -362,6 +377,7 @@ class SearchView(APIView):
         dt_ms = int((monotonic() - t0) * 1000)
         logger.info("SEARCH time_ms=%s q_len=%s k=%s version=%s top=%s", dt_ms, len(q), k, version, [(h.get("product_id"), round(h.get("score", 0), 6)) for h in hits[:3]])
         return Response(resp, status=200)
+
 
 @extend_schema(
     tags=["assistant"],
@@ -378,7 +394,20 @@ class AssistantAskView(APIView):
         if not q:
             return Response({"detail": "missing q"}, status=400)
         k = int((request.data or {}).get("k", 5))
-        key = f"assistant:{buster_key()}:{q}:{k}"
+        rates = getattr(settings, "REST_FRAMEWORK", {}).get("DEFAULT_THROTTLE_RATES", {})
+        rate = rates.get("assistant", "10/min")
+        try:
+            limit = int(rate.split("/")[0]) or 10
+        except Exception:
+            limit = 10
+        ip = _client_ip(request) or "anon"
+        tkey = make_key("th_assistant", ip)
+        count = int(cache.get(tkey, 0))
+        if count >= limit:
+            return Response({"detail": "throttled"}, status=429)
+        cache.set(tkey, count + 1, timeout=60)
+
+        key = make_key("assistant", buster_key(), q, k)
         cached = cache.get(key)
         if cached:
             return Response(cached, status=200)
