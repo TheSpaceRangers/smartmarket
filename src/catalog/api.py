@@ -1,4 +1,5 @@
 import logging
+from time import monotonic
 
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -295,6 +296,7 @@ class ProductRecommendationsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, pk: int):
+        t0 = monotonic()
         k = int(request.query_params.get("k", 10))
         idx_manifest = products_index.read_manifest("product_index") if hasattr(products_index, "read_manifest") else {"version": "0"}
         version = (idx_manifest or {}).get("version", "0")
@@ -317,6 +319,8 @@ class ProductRecommendationsView(APIView):
             decorated.append(item)
         resp = {"results": decorated, "version": version}
         cache.set(key, resp, timeout=300)
+        dt_ms = int((monotonic() - t0) * 1000)
+        logger.info("RECO time_ms=%s pk=%s k=%s version=%s top=%s", dt_ms, pk, k, version, [(r.get("product_id"), round(r.get("score", 0), 6)) for r in recs[:3]])
         return Response(resp, status=200)
 
 @extend_schema(
@@ -331,6 +335,7 @@ class SearchView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+        t0 = monotonic()
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response({"detail": "missing q"}, status=400)
@@ -354,6 +359,8 @@ class SearchView(APIView):
             out.append(item)
         resp = {"results": out, "version": version}
         cache.set(key, resp, timeout=300)
+        dt_ms = int((monotonic() - t0) * 1000)
+        logger.info("SEARCH time_ms=%s q_len=%s k=%s version=%s top=%s", dt_ms, len(q), k, version, [(h.get("product_id"), round(h.get("score", 0), 6)) for h in hits[:3]])
         return Response(resp, status=200)
 
 @extend_schema(
