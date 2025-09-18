@@ -17,6 +17,7 @@ def test_similarity_self_max():
     recs = recommend(a.id, k=1, exclude_self=False)
     assert recs and recs[0]["product_id"] == a.id
 
+
 @pytest.mark.django_db
 def test_recommendations_api(client):
     c = Category.objects.create(name="Audio", slug="audio")

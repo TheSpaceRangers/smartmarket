@@ -1,5 +1,5 @@
 services:
-  db:
+  smartmarket-db:
     image: postgres:16
     container_name: smartmarket-db
     environment:
@@ -10,6 +10,15 @@ services:
     volumes: [dbdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  smartmarket-redis:
+    image: redis:7-alpine
+    container_name: smartmarket-redis
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10

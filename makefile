@@ -41,3 +41,14 @@ fmt:
 .PHONY: openapi
 openapi:
 	$(MANAGE) spectacular --file openapi.yaml
+
+.PHONY: seed
+seed: seed-demo seed-rbac
+
+.PHONY: reindex-products
+reindex-products:
+	$(MANAGE) build_product_index --idx-version $${VERSION:-v1}
+
+.PHONY: reindex-assistant
+reindex-assistant:
+	$(MANAGE) build_assistant_index --idx-version $${VERSION:-v1}

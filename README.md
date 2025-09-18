@@ -68,8 +68,9 @@ make migrate
 4. Données de démo et rôles (RBAC)
 
 ```bash
-make seed-demo        # Catégories/produits
-make seed-rbac        # Groupes client/manager/admin + users de démo
+make seed
+make seed-demo
+make seed-rbac
 ```
 
 Utilisateurs créés (après `make seed-rbac`) :
