@@ -18,14 +18,19 @@ Including another URLconf
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
 from catalog.api import (
     CategoryViewSet,
+    JWTLoginView,
+    JWTLogoutView,
+    JWTRefreshView,
+    LoginView,
     MeEraseView,
     MeExportView,
     OrderViewSet,
+    PasswordResetRequestView,
     ProductViewSet,
 )
 
@@ -37,11 +42,18 @@ router.register(r"orders", OrderViewSet, basename="api-order")
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("catalog.urls")),
+    path("api-auth/", include("rest_framework.urls")),
     path("api/v1/", include(router.urls)),
     path("api/v1/me/export/", MeExportView.as_view(), name="api-me-export"),
     path("api/v1/me/erase/", MeEraseView.as_view(), name="api-me-erase"),
+    path("api/v1/login/", LoginView.as_view(), name="api-login"),
+    path("api/v1/password-reset/", PasswordResetRequestView.as_view(), name="api-password-reset"),
+    path("api/v1/jwt/login/", JWTLoginView.as_view(), name="api-jwt-login"),
+    path("api/v1/jwt/refresh/", JWTRefreshView.as_view(), name="api-jwt-refresh"),
+    path("api/v1/jwt/logout/", JWTLogoutView.as_view(), name="api-jwt-logout"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
 if settings.DEBUG:

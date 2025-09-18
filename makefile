@@ -3,7 +3,7 @@ MANAGE=$(PY) src/manage.py
 
 .PHONY: up
 up:
-	docker compose up -d db
+	docker compose up -d
 
 .PHONY: migrate
 migrate:
@@ -25,6 +25,10 @@ dev:
 test:
 	pytest -q
 
+.PHONY: coverage
+coverage:
+	pytest -q --cov=src --cov-report=term-missing
+
 .PHONY: lint
 lint:
 	ruff check .
@@ -33,3 +37,7 @@ lint:
 fmt:
 	black .
 	ruff check --fix .
+
+.PHONY: openapi
+openapi:
+	$(MANAGE) spectacular --file openapi.yaml

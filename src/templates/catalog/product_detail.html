@@ -1,13 +1,13 @@
-{% extends "base.html" %}
-
-{% block title %}{{ object.name }} - SmartMarket{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}{{ object.name }} - SmartMarket{% endblock %} {% block content %}
 <article class="product-detail">
   <nav class="breadcrumb" aria-label="Fil d'Ariane">
     <ol>
       <li><a href="{% url 'catalog:product_list' %}">Catalogue</a></li>
-      <li><a href="{% url 'catalog:product_list' %}">{{ object.category.name }}</a></li>
+      <li>
+        <a href="{% url 'catalog:product_list' %}"
+          >{{ object.category.name }}</a
+        >
+      </li>
       <li aria-current="page">{{ object.name }}</li>
     </ol>
   </nav>
@@ -26,16 +26,14 @@
     <div class="product-price-box">
       <span class="price-label">Prix</span>
       <span class="price-value">{{ object.price }} €</span>
-      
+
       <div class="stock-info">
         {% if object.stock > 0 %}
-          <span class="stock-status in-stock">
-            ✓ En stock ({{ object.stock }} disponible{{ object.stock|pluralize }})
-          </span>
+        <span class="stock-status in-stock">
+          ✓ En stock ({{ object.stock }} disponible{{ object.stock|pluralize }})
+        </span>
         {% else %}
-          <span class="stock-status out-of-stock">
-            ✗ Rupture de stock
-          </span>
+        <span class="stock-status out-of-stock"> ✗ Rupture de stock </span>
         {% endif %}
       </div>
     </div>
@@ -43,9 +41,11 @@
     <section class="product-description">
       <h2>Description</h2>
       {% if object.description %}
-        <p>{{ object.description|linebreaks }}</p>
+      <p>{{ object.description|linebreaks }}</p>
       {% else %}
-        <p class="no-description">Aucune description disponible pour ce produit.</p>
+      <p class="no-description">
+        Aucune description disponible pour ce produit.
+      </p>
       {% endif %}
     </section>
 
@@ -54,10 +54,10 @@
       <dl>
         <dt>Référence</dt>
         <dd>{{ object.slug|upper }}</dd>
-        
+
         <dt>Catégorie</dt>
         <dd>{{ object.category.name }}</dd>
-        
+
         <dt>Ajouté le</dt>
         <dd>{{ object.created_at|date:"d/m/Y à H:i" }}</dd>
       </dl>

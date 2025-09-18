@@ -43,9 +43,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Groupe {role} prêt"))
 
         users = [
-            ("admin", "admin", True, ["admin"]),
-            ("manager", "manager", False, ["manager"]),
-            ("client", "client", False, ["client"]),
+            ("admin", "Admin123!Admin", True, ["admin"]),
+            ("manager", "Manager123!$", False, ["manager"]),
+            ("client", "Client123!$", False, ["client"]),
         ]
 
         for username, password, is_superuser, groups in users:
