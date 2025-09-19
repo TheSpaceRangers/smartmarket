@@ -1,17 +1,21 @@
 import json
 import time
 from pathlib import Path
+
 from django.core.management.base import BaseCommand
-from django.conf import settings
+
 from catalog.models import Product
-from ml.products_index import load_or_build, search as search_products, read_manifest
+from ml.products_index import load_or_build, read_manifest
+from ml.products_index import search as search_products
 from ml.utils import artifacts_dir
+
 
 def _p_at_k(found_ids, expected_ids, k):
     if k <= 0:
         return 0.0
     hits = sum(1 for pid in found_ids[:k] if pid in expected_ids)
     return hits / float(k)
+
 
 class Command(BaseCommand):
     help = "Évalue la recherche produits (P@K) à partir d'un fichier JSON de paires requête→slugs attendus."
@@ -28,7 +32,7 @@ class Command(BaseCommand):
             return 1
 
         queries = json.loads(path.read_text(encoding="utf-8"))
-        idx = load_or_build()
+        load_or_build()
         manifest = read_manifest("product_index") or {"version": "0"}
 
         # Résoudre slugs -> ids
@@ -44,12 +48,14 @@ class Command(BaseCommand):
             found_ids = [h["product_id"] for h in hits]
             p_at_k = _p_at_k(found_ids, expected_ids, k)
             scores.append(p_at_k)
-            results.append({
-                "q": text,
-                "expected_slugs": q.get("expected_slugs", []),
-                "found_ids": found_ids,
-                "p_at_k": round(p_at_k, 4),
-            })
+            results.append(
+                {
+                    "q": text,
+                    "expected_slugs": q.get("expected_slugs", []),
+                    "found_ids": found_ids,
+                    "p_at_k": round(p_at_k, 4),
+                }
+            )
 
         macro = round(sum(scores) / len(scores), 4) if scores else 0.0
         report = {

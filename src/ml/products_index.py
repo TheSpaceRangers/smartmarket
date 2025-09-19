@@ -211,47 +211,7 @@ def recommend_mmr(product_id: int, k: int = 10, mmr_lambda: float = 0.7) -> list
 
     vocab = idx.vectorizer.vocabulary_
     reasons = ", ".join(_top_terms(pv, vocab))
-    return [
-        {"product_id": int(idx.ids[i]), "score": sc, "reason": f"Diversification MMR (caractéristiques: {reasons})"}
-        for i, sc in zip(selected, selected_scores, strict=False)
-    ]
+    return [{"product_id": int(idx.ids[i]), "score": sc, "reason": f"Diversification MMR (caractéristiques: {reasons})"} for i, sc in zip(selected, selected_scores, strict=False)]
 
-# src/ml/products_index.py (ajouts)
-def recommend_mmr(product_id: int, k: int = 10, mmr_lambda: float = 0.7) -> list[dict[str, Any]]:
-    idx = load_or_build()
-    if idx.ids.size == 0:
-        return []
-    try:
-        pos = int(np.where(idx.ids == product_id)[0][0])
-    except IndexError:
-        return []
-    pv = idx.X[pos]
-    sims_to_q = cosine_similarity(pv, idx.X).ravel()
-    sims_to_q[pos] = -1.0  # exclure soi-même
-    # candidats ordonnés par similarité brute
-    candidates = np.argsort(-sims_to_q).tolist()
-    selected: list[int] = []
-    selected_scores: list[float] = []
 
-    while len(selected) < k and candidates:
-        best_i, best_score = None, -1e9
-        for i in candidates:
-            # redondance max avec déjà sélectionnés
-            if selected:
-                sims_to_sel = cosine_similarity(idx.X[i], idx.X[selected]).ravel()
-                redundancy = np.max(sims_to_sel)
-            else:
-                redundancy = 0.0
-            score = mmr_lambda * sims_to_q[i] - (1.0 - mmr_lambda) * redundancy
-            if score > best_score:
-                best_i, best_score = i, score
-        selected.append(best_i)
-        selected_scores.append(float(sims_to_q[best_i]))
-        candidates.remove(best_i)
-
-    vocab = idx.vectorizer.vocabulary_
-    reasons = ", ".join(_top_terms(pv, vocab))
-    return [
-        {"product_id": int(idx.ids[i]), "score": sc, "reason": f"Diversification MMR (caractéristiques: {reasons})"}
-        for i, sc in zip(selected, selected_scores, strict=False)
-    ]
+# (supprimé doublon)

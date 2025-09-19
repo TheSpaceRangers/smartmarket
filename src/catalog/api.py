@@ -19,7 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from ml import assistant as ml_assistant
 from ml import products_index
 from ml.cache import buster_key, make_key
-from ml.metrics import record_duration, incr_counter, get_counter, p95
+from ml.metrics import get_counter, incr_counter, p95, record_duration
 
 from .models import Category, Order, Product
 from .permissions import IsOwnerOrAdmin, IsStaffOrDjangoModelPermissionsOrAnonReadOnly
@@ -428,6 +428,7 @@ class AssistantAskView(APIView):
         cache.set(key, result, timeout=120)
         return Response(result, status=200)
 
+
 # src/catalog/api.py (nouveaux endpoints)
 @extend_schema(tags=["metrics"], summary="Enregistre un clic sur une recommandation")
 class RecommendationClickView(APIView):
@@ -440,6 +441,7 @@ class RecommendationClickView(APIView):
             return Response({"detail": "missing product_id"}, status=400)
         incr_counter("reco_clicks", 1)
         return Response({"status": "ok"}, status=200)
+
 
 @extend_schema(tags=["metrics"], summary="Métriques synthétiques (CTR, P95 latence) sur la dernière fenêtre")
 class MetricsView(APIView):

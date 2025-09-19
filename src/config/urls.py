@@ -30,13 +30,13 @@ from catalog.api import (
     LoginView,
     MeEraseView,
     MeExportView,
+    MetricsView,
     OrderViewSet,
     PasswordResetRequestView,
     ProductRecommendationsView,
     ProductViewSet,
-    SearchView,
     RecommendationClickView,
-    MetricsView,
+    SearchView,
 )
 
 router = DefaultRouter()
