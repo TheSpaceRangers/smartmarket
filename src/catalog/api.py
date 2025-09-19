@@ -19,6 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from ml import assistant as ml_assistant
 from ml import products_index
 from ml.cache import buster_key, make_key
+from ml.metrics import record_duration, incr_counter, get_counter, p95
 
 from .models import Category, Order, Product
 from .permissions import IsOwnerOrAdmin, IsStaffOrDjangoModelPermissionsOrAnonReadOnly
@@ -299,12 +300,17 @@ class ProductRecommendationsView(APIView):
     def get(self, request, pk: int):
         t0 = monotonic()
         k = int(request.query_params.get("k", 10))
+        diversify = (request.query_params.get("diversify") or "").lower()
         idx_manifest = products_index.read_manifest("product_index") if hasattr(products_index, "read_manifest") else {"version": "0"}
         version = (idx_manifest or {}).get("version", "0")
         key = make_key("reco", version, buster_key(), pk, k)
         cached = cache.get(key)
         if cached:
             return Response(cached, status=200)
+        if diversify == "mmr":
+            recs = products_index.recommend_mmr(product_id=pk, k=k)
+        else:
+            recs = products_index.recommend(product_id=pk, k=k, exclude_self=True, ensure_diversity=True)
         recs = products_index.recommend(product_id=pk, k=k, exclude_self=True, ensure_diversity=True)
         ids = [r["product_id"] for r in recs]
         qs = Product.objects.filter(id__in=ids).select_related("category")
@@ -319,6 +325,8 @@ class ProductRecommendationsView(APIView):
         resp = {"results": decorated, "version": version}
         cache.set(key, resp, timeout=300)
         dt_ms = int((monotonic() - t0) * 1000)
+        record_duration("reco_ms", dt_ms)
+        incr_counter("reco_impressions", 1)
         logger.info("RECO time_ms=%s pk=%s k=%s version=%s top=%s", dt_ms, pk, k, version, [(r.get("product_id"), round(r.get("score", 0), 6)) for r in recs[:3]])
         return Response(resp, status=200)
 
@@ -374,8 +382,10 @@ class SearchView(APIView):
             out.append(item)
         resp = {"results": out, "version": version}
         cache.set(key, resp, timeout=300)
+        # SearchView.get — après composition de resp (les deux branches, hits ou fallback)
         dt_ms = int((monotonic() - t0) * 1000)
-        logger.info("SEARCH time_ms=%s q_len=%s k=%s version=%s top=%s", dt_ms, len(q), k, version, [(h.get("product_id"), round(h.get("score", 0), 6)) for h in hits[:3]])
+        record_duration("search_ms", dt_ms)
+        logger.info("SEARCH time_ms=%s q_len=%s k=%s version=%s top=%s", dt_ms, len(q), k, version, [(h.get("product_id"), round(h.get("score", 0), 6)) for h in hits[:3]] if hits else [])
         return Response(resp, status=200)
 
 
@@ -391,6 +401,7 @@ class AssistantAskView(APIView):
 
     def post(self, request):
         q = (request.data or {}).get("q", "").strip()
+        t0 = monotonic()
         if not q:
             return Response({"detail": "missing q"}, status=400)
         k = int((request.data or {}).get("k", 5))
@@ -412,5 +423,35 @@ class AssistantAskView(APIView):
         if cached:
             return Response(cached, status=200)
         result = ml_assistant.answer(q=q, k=k)
+        dt_ms = int((monotonic() - t0) * 1000)
+        record_duration("assistant_ms", dt_ms)
         cache.set(key, result, timeout=120)
         return Response(result, status=200)
+
+# src/catalog/api.py (nouveaux endpoints)
+@extend_schema(tags=["metrics"], summary="Enregistre un clic sur une recommandation")
+class RecommendationClickView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "user"
+
+    def post(self, request):
+        pid = int((request.data or {}).get("product_id") or 0)
+        if pid <= 0:
+            return Response({"detail": "missing product_id"}, status=400)
+        incr_counter("reco_clicks", 1)
+        return Response({"status": "ok"}, status=200)
+
+@extend_schema(tags=["metrics"], summary="Métriques synthétiques (CTR, P95 latence) sur la dernière fenêtre")
+class MetricsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        impressions = get_counter("reco_impressions")
+        clicks = get_counter("reco_clicks")
+        ctr = (clicks / impressions) if impressions else 0.0
+        data = {
+            "reco": {"impressions": impressions, "clicks": clicks, "ctr": round(ctr, 4), "p95_ms": p95("reco_ms")},
+            "search": {"p95_ms": p95("search_ms")},
+            "assistant": {"p95_ms": p95("assistant_ms")},
+        }
+        return Response(data, status=200)

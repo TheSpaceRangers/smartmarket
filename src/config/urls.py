@@ -35,6 +35,8 @@ from catalog.api import (
     ProductRecommendationsView,
     ProductViewSet,
     SearchView,
+    RecommendationClickView,
+    MetricsView,
 )
 
 router = DefaultRouter()
@@ -50,6 +52,8 @@ urlpatterns = [
     path("api/v1/products/<int:pk>/recommendations/", ProductRecommendationsView.as_view(), name="api-product-recommendation"),
     path("api/v1/search/", SearchView.as_view(), name="api-search"),
     path("api/v1/assistant/ask/", AssistantAskView.as_view(), name="api-assistant-ask"),
+    path("api/v1/recommendations/clicks/", RecommendationClickView.as_view(), name="api-reco-click"),
+    path("api/v1/metrics/", MetricsView.as_view(), name="api-metrics"),
     path("api/v1/me/export/", MeExportView.as_view(), name="api-me-export"),
     path("api/v1/me/erase/", MeEraseView.as_view(), name="api-me-erase"),
     path("api/v1/login/", LoginView.as_view(), name="api-login"),
